@@ -1,5 +1,5 @@
 {
-  "defaultMap": "Dev",
+  "defaultMap": "SunriseBox",
   "mapListUrl": "maps/list.json",
   "mapDataUrl": "maps/{1}/map.json"
 }

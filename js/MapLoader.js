@@ -81,7 +81,7 @@ class MapLoader {
 			console.log(evt.coordinate);
 		});
 
-		map.set('map-name', data.displayName);
+		map.set('map-name', data.name);
 
 		return map;
 	}
@@ -205,7 +205,7 @@ class MapLoader {
 				visible: false,
 				source: new ImageStatic({
 					attributions: data.attributions,
-					url: `maps/${gridLayer.subfloor}`,
+					url: `maps/${gridLayer.subfloorUrl}`,
 					interpolate: false,
 					projection: projection,
 					imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],

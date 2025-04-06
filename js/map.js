@@ -10,7 +10,7 @@ Config.loadConfiguration("config.json").then(() => {
 	const query = new URLSearchParams(window.location.search);
 	const defaultMap = window.config.defaultMap;
 
-	const mapId = query.has('map') ? query.get('map').toLowerCase() : defaultMap;
+	const mapId = query.has('map') ? query.get('map') : defaultMap;
 	const hideSelector = query.has('no-selector');
 
 	function getMarkers()

@@ -42,6 +42,30 @@ index c7b8dcaee9..7577c9ac0d 100644
                  }
              });
          };
+diff --git a/Content.MapRenderer/MapViewerData.cs b/Content.MapRenderer/MapViewerData.cs
+index b7b720e004..102f19587c 100644
+--- a/Content.MapRenderer/MapViewerData.cs
++++ b/Content.MapRenderer/MapViewerData.cs
+@@ -20,9 +20,10 @@ public sealed class GridLayer
+     public Position Offset { get; set; }
+     public bool Tiled { get; set; } = false;
+     public string Url { get; set; }
++    public string SubfloorUrl { get; set; }
+     public Extent Extent { get; set; }
+ 
+-    public GridLayer(RenderedGridImage<Rgba32> gridImage, string url)
++    public GridLayer(RenderedGridImage<Rgba32> gridImage, string url, string subfloorUrl)
+     {
+         //Get the internal _uid as string
+         if (gridImage.GridUid.HasValue)
+@@ -31,6 +32,7 @@ public GridLayer(RenderedGridImage<Rgba32> gridImage, string url)
+         Offset = new Position(gridImage.Offset);
+         Extent = new Extent(gridImage.Image.Width, gridImage.Image.Height);
+         Url = url;
++        SubfloorUrl = subfloorUrl;
+     }
+ }
+ 
 diff --git a/Content.MapRenderer/Painters/EntityData.cs b/Content.MapRenderer/Painters/EntityData.cs
 index 8aad0c7e93..8ce3159368 100644
 --- a/Content.MapRenderer/Painters/EntityData.cs
@@ -251,7 +275,7 @@ index 94d58b35a0..4e9fc2b58d 100644
  
              // We don't care if it fails as we have already saved the images.
 diff --git a/Content.MapRenderer/Program.cs b/Content.MapRenderer/Program.cs
-index 7314119108..88197f19a3 100644
+index 7314119108..e82046b443 100644
 --- a/Content.MapRenderer/Program.cs
 +++ b/Content.MapRenderer/Program.cs
 @@ -9,6 +9,7 @@
@@ -279,7 +303,7 @@ index 7314119108..88197f19a3 100644
  
                          Console.WriteLine($"Writing grid of size {grid.Width}x{grid.Height} to {savePath}");
  
-@@ -181,11 +184,13 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -181,17 +184,21 @@ private static async Task Run(CommandLineArguments arguments)
                                  };
  
                                  await grid.SaveAsync(savePath, encoder);
@@ -293,18 +317,16 @@ index 7314119108..88197f19a3 100644
                                  break;
                          }
  
-@@ -193,6 +198,10 @@ private static async Task Run(CommandLineArguments arguments)
+                         grid.Dispose();
  
-                         mapViewerData.Grids.Add(new GridLayer(renderedGrid, Path.Combine(map, Path.GetFileName(savePath))));
- 
+-                        mapViewerData.Grids.Add(new GridLayer(renderedGrid, Path.Combine(map, Path.GetFileName(savePath))));
 +                        subfloor.Dispose();
 +
-+                        mapViewerData.Grids.Add(new GridLayer(renderedSubfloor, Path.Combine(map, Path.GetFileName(saveSubfloorPath))));
-+
++                        mapViewerData.Grids.Add(new GridLayer(renderedSubfloor, Path.Combine(map, Path.GetFileName(savePath)), Path.Combine(map, Path.GetFileName(saveSubfloorPath))));
+ 
                          mapNames.Add(fileName);
                          i++;
-                     }
-@@ -206,7 +215,11 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -206,7 +213,11 @@ private static async Task Run(CommandLineArguments arguments)
  
                  if (arguments.ExportViewerJson)
                  {

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "update-patch": "bash scripts/update-patch.sh",
+    "create-maps-list": "node scripts/create-maps-list.js"
   },
   "devDependencies": {
     "vite": "^4.3.9"
