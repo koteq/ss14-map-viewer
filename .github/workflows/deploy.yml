@@ -7,70 +7,67 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-container:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository with submodules
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Restore extracted data from cache
+      - name: Restore rendered maps from cache
         id: restore-cache
         uses: actions/cache@v4
         with:
           path: public/maps
           key: v1 # TODO: use submodule hash
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Setup Submodule
-        run: |
-          git submodule update --init --recursive
+      - name: Checkout submodules
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
+        run: git submodule update --init --recursive
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Set up .NET
+      - name: Set up .NET
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Restore dependencies
-        run: dotnet restore
+      - name: Restore .NET dependencies
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
+        run: dotnet restore ss14-sunrise/Content.MapRenderer
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Apply map renderer patch
-        run: git -C ss14-sunrise apply patches/update-map-renderer.patch
+      - name: Apply map renderer patch
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
+        run: git -C ss14-sunrise apply ../patches/update-map-renderer.patch
       
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Build map renderer
+      - name: Build map renderer
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
         run: dotnet build ss14-sunrise/Content.MapRenderer --configuration Release --no-restore
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Render maps
+      - name: Render maps
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
         run: dotnet run --project ss14-sunrise/Content.MapRenderer --no-restore -- --viewer Dev SunriseBox
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Write map list file
+      - name: Write map list file
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
         run: |
           echo '{"maps": [
             { "id": "Dev", "name": "Dev"},
             { "id": "SunriseBox", "name": "Box" }
-          ]}' > public/list.json
+          ]}' > public/maps/list.json
 
-      - if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
-        name: Move rendered maps
-        run: mv ss14-sunrise/Resources/MapImages/* public/maps/
+      - name: Move rendered maps
+        if: ${{ steps.restore-cache.outputs.cache-hit != 'true' }}
+        run: mv ss14-sunrise/Resources/MapImages/* public/maps
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "22"
       
-      - name: Install dependencies
+      - name: Install Node.js dependencies
         run: npm ci
       
-      - name: Build project
+      - name: Build map viewer
         run: npm run build
 
       - name: Upload files as artifact
