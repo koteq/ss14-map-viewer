@@ -36,12 +36,12 @@ class MapLoader {
 				const projection = new Projection({
 					code: 'map-image',
 					units: 'pixels',
-					extent: [map0Extent.a.x, map0Extent.a.y, map0Extent.b.x, map0Extent.b.y],
+					extent: [map0Extent.x1, map0Extent.y1, map0Extent.x2, map0Extent.y2],
 				});
 
 				const view = new View({
 					projection: projection,
-					center: getCenter([map0Extent.a.x, map0Extent.a.y, map0Extent.b.x, map0Extent.b.y]),
+					center: getCenter([map0Extent.x1, map0Extent.y1, map0Extent.x2, map0Extent.y2]),
 					zoom: 1,
 					resolutions: [4, 2, 1, 1 / 2, 1 / 4],
 					constrainResolution: true,
@@ -59,7 +59,7 @@ class MapLoader {
 		const projection = new Projection({
 			code: 'map-image',
 			units: 'pixels',
-			extent: [map0Extent.a.x, map0Extent.a.y, map0Extent.b.x, map0Extent.b.y],
+			extent: [map0Extent.x1, map0Extent.y1, map0Extent.x2, map0Extent.y2],
 		});
 
 		const layers = this.createLayers(data, projection);
@@ -70,7 +70,7 @@ class MapLoader {
 			maxTilesLoading: 20,
 			view: new View({
 				projection: projection,
-				center: getCenter([map0Extent.a.x, map0Extent.a.y, map0Extent.b.x, map0Extent.b.y]),
+				center: getCenter([map0Extent.x1, map0Extent.y1, map0Extent.x2, map0Extent.y2]),
 				zoom: 1,
 				resolutions: [4, 2, 1, 1 / 2, 1 / 4],
 				constrainResolution: true,
@@ -103,7 +103,7 @@ class MapLoader {
 
 				const source = new ImageStatic({
 					url: parallaxData.source.url,
-					imageExtent: [extent.a.x, extent.a.y, extent.b.x, extent.b.y],
+					imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
 					interpolate: false,
 					projection: projection
 				});
@@ -149,10 +149,10 @@ class MapLoader {
 			
 			if (i > 0)
 			{
-				extent.a.x -= /*4.12 **/ gridLayer.offset.x - extent.b.x;
-				extent.a.y += baseGridExtent.b.y - baseGridOffset.y - 4.5 * gridLayer.offset.y;
-				extent.b.x -= /*4.12 **/ gridLayer.offset.x - extent.b.x;
-				extent.b.y += baseGridExtent.b.y - baseGridOffset.y - 4.5 * gridLayer.offset.y;
+				extent.x1 -= /*4.12 **/ gridLayer.offset.x - extent.x2;
+				extent.y1 += baseGridExtent.y2 - baseGridOffset.y - 4.5 * gridLayer.offset.y;
+				extent.x2 -= /*4.12 **/ gridLayer.offset.x - extent.x2;
+				extent.y2 += baseGridExtent.y2 - baseGridOffset.y - 4.5 * gridLayer.offset.y;
 				//console.log(extent);
 			}
 
@@ -166,14 +166,14 @@ class MapLoader {
 
 			if (gridLayer.tiled) {
 				mapLayer = new TileLayer({
-					extent: [extent.a.x, extent.a.y, extent.b.x, extent.b.y],
+					extent: [extent.x1, extent.y1, extent.x2, extent.y2],
 					updateWhileInteracting: true,
 					updateWhileAnimating: true,
 					source: new XYZ({
 						attributions: data.attributions,
 						url: "https://" + gridLayer.url.replace(/https?:\/\//, "") + "/{x}/{y}/{z}",
 						tileGrid: new TileGrid({
-							extent: [extent.a.x, extent.a.y, extent.b.x, extent.b.y],
+							extent: [extent.x1, extent.y1, extent.x2, extent.y2],
 							maxZoom: 0,
 							resolutions: [1],
 							tileSize: [gridLayer.tileSize, gridLayer.tileSize],
@@ -189,17 +189,31 @@ class MapLoader {
 				mapLayer = new Image({
 					source: new ImageStatic({
 						attributions: data.attributions,
-						url: gridLayer.url,
+						url: `maps/${gridLayer.url}`,
 						interpolate: false,
 						projection: projection,
-						imageExtent: [extent.a.x, extent.a.y, extent.b.x, extent.b.y],
+						imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
 						imageSmoothing: false
 					}),
 				});
 			
 			}
 
-			mapLayer.on('prerender', function (evt) {
+			// Add the subfloor layer
+			const subfloorLayer = new Image({
+				name: 'subfloor',
+				visible: false,
+				source: new ImageStatic({
+					attributions: data.attributions,
+					url: `maps/${gridLayer.subfloor}`,
+					interpolate: false,
+					projection: projection,
+					imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
+					imageSmoothing: false
+				}),
+			});
+
+			function updateSmoothing(evt) {
 				if (evt.frameState.viewState.zoom < 2) {
 					evt.context.imageSmoothingEnabled = true;
 					evt.context.webkitImageSmoothingEnabled = true;
@@ -212,9 +226,12 @@ class MapLoader {
 					evt.context.mozImageSmoothingEnabled = false;
 					evt.context.msImageSmoothingEnabled = false;
 				}
-			});
-
+			};
+			subfloorLayer.on('prerender', updateSmoothing);
+			mapLayer.on('prerender', updateSmoothing);
+			
 			gridLayers.push(mapLayer);
+			gridLayers.push(subfloorLayer);
 			i++;
 		}
 		return [...parallaxLayers, ...gridLayers];

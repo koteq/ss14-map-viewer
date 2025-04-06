@@ -2,6 +2,7 @@ import MapLoader from "./MapLoader";
 import MapSelector from "./MapSelector";
 import Markers from "./Markers";
 import Config from "./Config.js";
+import SubfloorToggle from "./SubfloorToggle";
 
 //Load configuration
 Config.loadConfiguration("config.json").then(() => {
@@ -28,6 +29,15 @@ Config.loadConfiguration("config.json").then(() => {
 		map = loadedMap
 		
 		if (!hideSelector) map.addControl(new MapSelector({selected: {name: loadedMap.get('map-name'), id: mapId}, onMapChanged: onMapChangedHandler}));
+
+		map.addControl(new SubfloorToggle({
+			onToggle: (state) => {
+				const subfloorLayer = map.getLayers().getArray().find(layer => layer.get('name') === 'subfloor');
+				if (subfloorLayer) {
+					subfloorLayer.setVisible(state);
+				}
+			},
+		}));
 		
 		map.addLayer(Markers.drawMarkerLayer(getMarkers()));
 		window.olmap = map;

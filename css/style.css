@@ -45,8 +45,13 @@ canvas {
     display: none;
 }
 
-#map-selector {
+#subfloor-toggle {
     top: 65px;
+    left: .5rem;
+}
+
+#map-selector {
+    top: 95px;
     left: .5rem;
     min-width: 120px;;
 }
