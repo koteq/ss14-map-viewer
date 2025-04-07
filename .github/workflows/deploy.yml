@@ -6,6 +6,14 @@ on:
       - master
   workflow_dispatch:
 
+concurrency:
+  group: render-build-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAP_IMAGES_CACHE_BUST_VERSION: v7
+  MAP_RENDERER_CACHE_BUST_VERSION: v7
+
 jobs:
   build-map-renderer:
     runs-on: ubuntu-latest
@@ -22,7 +30,7 @@ jobs:
         id: cache-map-renderer
         uses: actions/cache@v4
         with:
-          key: build-map-renderer-${{ env.SUBMODULE_SHA }}-v2
+          key: build-map-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
           path: ss14-sunrise/bin
           lookup-only: true # Skip download as the job doesn't need it
 
@@ -43,7 +51,7 @@ jobs:
       - name: Apply map renderer patch
         if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
         run: git -C ss14-sunrise apply ../patches/map-renderer.patch
-      
+
       - name: Build map renderer
         if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
         run: dotnet build ss14-sunrise/Content.MapRenderer --configuration Release --no-restore
@@ -60,7 +68,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Get Sunrise submodule version
         id: submodule-sha
         run: echo "SUBMODULE_SHA=$(git ls-tree --object-only HEAD ss14-sunrise)" >> $GITHUB_ENV
@@ -69,7 +77,7 @@ jobs:
         id: cache-map-images
         uses: actions/cache@v4
         with:
-          key: map-${{ matrix.map }}-${{ env.SUBMODULE_SHA }}-v3
+          key: map-${{ matrix.map }}-${{ env.SUBMODULE_SHA }}-${{ env.MAP_IMAGES_CACHE_BUST_VERSION }}
           path: ss14-sunrise/Resources/MapImages
 
       - name: Checkout Sunrise and Robust submodules
@@ -83,10 +91,10 @@ jobs:
         id: restore-map-renderer
         uses: actions/cache/restore@v4
         with:
-          key: build-map-renderer-${{ env.SUBMODULE_SHA }}-v2
+          key: build-map-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
           path: ss14-sunrise/bin
           fail-on-cache-miss: true
-      
+
       - name: Set up .NET
         if: ${{ steps.cache-map-images.outputs.cache-hit != 'true' }}
         uses: actions/setup-dotnet@v4

@@ -90,7 +90,7 @@ index 8aad0c7e93..8ce3159368 100644
 +    public readonly SubFloorHideComponent? SubFloor = SubFloor;
  }
 diff --git a/Content.MapRenderer/Painters/EntityPainter.cs b/Content.MapRenderer/Painters/EntityPainter.cs
-index 2c70481b8a..ed5be3bc8c 100644
+index 2c70481b8a..6455c37127 100644
 --- a/Content.MapRenderer/Painters/EntityPainter.cs
 +++ b/Content.MapRenderer/Painters/EntityPainter.cs
 @@ -10,6 +10,7 @@
@@ -101,7 +101,7 @@ index 2c70481b8a..ed5be3bc8c 100644
  
  namespace Content.MapRenderer.Painters;
  
-@@ -32,17 +33,34 @@ public EntityPainter(ClientIntegrationInstance client, ServerIntegrationInstance
+@@ -32,17 +33,28 @@ public EntityPainter(ClientIntegrationInstance client, ServerIntegrationInstance
          _errorImage = Image.Load<Rgba32>(_resManager.ContentFileRead("/Textures/error.rsi/error.png"));
      }
  
@@ -114,21 +114,15 @@ index 2c70481b8a..ed5be3bc8c 100644
          // TODO cache this shit what are we insane
 -        entities.Sort(Comparer<EntityData>.Create((x, y) => x.Sprite.DrawDepth.CompareTo(y.Sprite.DrawDepth)));
 +        entities.Sort(Comparer<EntityData>.Create((x, y) => {
-+            if (!subfloorOnly) {
-+                 return x.Sprite.DrawDepth.CompareTo(y.Sprite.DrawDepth);
++            if (subfloorOnly)
++            {
++                var xDepth = x.SubFloor?.OriginalDrawDepth ?? 0;
++                var yDepth = y.SubFloor?.OriginalDrawDepth ?? 0;
++
++                return xDepth.CompareTo(yDepth);
 +            }
 +
-+            var xDepth = x.Sprite.DrawDepth;
-+            var yDepth = y.Sprite.DrawDepth;
-+            if (subfloorOnly && x.SubFloor != null)
-+            {
-+                xDepth += (int) DrawDepth.LowFloors * -1 + (int) DrawDepth.Overlays;
-+            }
-+            if (subfloorOnly && y.SubFloor != null)
-+            {
-+                yDepth += (int) DrawDepth.LowFloors * -1 + (int) DrawDepth.Overlays;
-+            }
-+            return xDepth.CompareTo(yDepth);
++            return x.Sprite.DrawDepth.CompareTo(y.Sprite.DrawDepth);
 +        }));
          var xformSystem = _sEntityManager.System<SharedTransformSystem>();
  
@@ -139,7 +133,7 @@ index 2c70481b8a..ed5be3bc8c 100644
          }
  
 diff --git a/Content.MapRenderer/Painters/GridPainter.cs b/Content.MapRenderer/Painters/GridPainter.cs
-index d8d6e15378..b1a3d7b734 100644
+index d8d6e15378..2043169c16 100644
 --- a/Content.MapRenderer/Painters/GridPainter.cs
 +++ b/Content.MapRenderer/Painters/GridPainter.cs
 @@ -13,6 +13,8 @@
@@ -179,22 +173,20 @@ index d8d6e15378..b1a3d7b734 100644
  
                      var (x, y) = TransformLocalPosition(position, grid);
 -                    var data = new EntityData(serverEntity, sprite, x, y);
-+                    _sEntityManager.TryGetComponent(serverEntity, out SubFloorHideComponent? subfloorOnly);
++                    _cEntityManager.TryGetComponent(clientEntity, out SubFloorHideComponent? subfloorOnly);
 +                    var data = new EntityData(serverEntity, sprite, x, y, subfloorOnly);
  
                      components.GetOrAdd(transform.GridUid.Value, _ => new List<EntityData>()).Add(data);
                  }
 diff --git a/Content.MapRenderer/Painters/MapPainter.cs b/Content.MapRenderer/Painters/MapPainter.cs
-index 94d58b35a0..4e9fc2b58d 100644
+index 94d58b35a0..50dc692985 100644
 --- a/Content.MapRenderer/Painters/MapPainter.cs
 +++ b/Content.MapRenderer/Painters/MapPainter.cs
-@@ -17,12 +17,15 @@
+@@ -17,12 +17,13 @@
  using SixLabors.ImageSharp;
  using SixLabors.ImageSharp.PixelFormats;
  using SixLabors.ImageSharp.Processing;
 +using Content.Client.SubFloor;
-+using Content.Server.Administration.Components;
-+using Content.Server.Power.Components;
  
  namespace Content.MapRenderer.Painters
  {
@@ -205,7 +197,7 @@ index 94d58b35a0..4e9fc2b58d 100644
          {
              var stopwatch = new Stopwatch();
              stopwatch.Start();
-@@ -45,6 +48,7 @@ public static async IAsyncEnumerable<RenderedGridImage<Rgba32>> Paint(string map
+@@ -45,6 +46,7 @@ public static async IAsyncEnumerable<RenderedGridImage<Rgba32>> Paint(string map
  
              var cEntityManager = client.ResolveDependency<IClientEntityManager>();
              var cPlayerManager = client.ResolveDependency<Robust.Client.Player.IPlayerManager>();
@@ -213,19 +205,7 @@ index 94d58b35a0..4e9fc2b58d 100644
  
              await client.WaitPost(() =>
              {
-@@ -52,6 +56,11 @@ await client.WaitPost(() =>
-                 {
-                     sprite.Visible = false;
-                 }
-+
-+                // if (showSubFloor)
-+                // {
-+                //    cEntitySystemManager.GetEntitySystem<SubFloorHideSystem>().ShowAll = true;
-+                // }
-             });
- 
-             var sEntityManager = server.ResolveDependency<IServerEntityManager>();
-@@ -117,7 +126,7 @@ await server.WaitPost(() =>
+@@ -117,7 +119,7 @@ await server.WaitPost(() =>
                  await server.WaitPost(() =>
                  {
                      tilePainter.Run(gridCanvas, uid, grid);
@@ -234,7 +214,7 @@ index 94d58b35a0..4e9fc2b58d 100644
  
                      gridCanvas.Mutate(e => e.Flip(FlipMode.Vertical));
                  });
-@@ -128,7 +137,38 @@ await server.WaitPost(() =>
+@@ -128,7 +130,35 @@ await server.WaitPost(() =>
                      Offset = xformSystem.GetWorldPosition(uid),
                  };
  
@@ -267,15 +247,12 @@ index 94d58b35a0..4e9fc2b58d 100644
 +                    cEntitySystemManager.GetEntitySystem<SubFloorHideSystem>().ShowAll = false;
 +                });
 +
-+                await pair.RunTicksSync(10);
-+                await Task.WhenAll(client.WaitIdleAsync(), server.WaitIdleAsync());
-+
 +                yield return (renderedImage, renderedSubfloor);
              }
  
              // We don't care if it fails as we have already saved the images.
 diff --git a/Content.MapRenderer/Program.cs b/Content.MapRenderer/Program.cs
-index 7314119108..e82046b443 100644
+index 7314119108..bf8988cc12 100644
 --- a/Content.MapRenderer/Program.cs
 +++ b/Content.MapRenderer/Program.cs
 @@ -9,6 +9,7 @@
@@ -303,7 +280,7 @@ index 7314119108..e82046b443 100644
  
                          Console.WriteLine($"Writing grid of size {grid.Width}x{grid.Height} to {savePath}");
  
-@@ -181,17 +184,21 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -181,17 +184,23 @@ private static async Task Run(CommandLineArguments arguments)
                                  };
  
                                  await grid.SaveAsync(savePath, encoder);
@@ -322,11 +299,13 @@ index 7314119108..e82046b443 100644
 -                        mapViewerData.Grids.Add(new GridLayer(renderedGrid, Path.Combine(map, Path.GetFileName(savePath))));
 +                        subfloor.Dispose();
 +
-+                        mapViewerData.Grids.Add(new GridLayer(renderedSubfloor, Path.Combine(map, Path.GetFileName(savePath)), Path.Combine(map, Path.GetFileName(saveSubfloorPath))));
++                        mapViewerData.Grids.Add(new GridLayer(renderedSubfloor,
++                            Path.Combine(map, Path.GetFileName(savePath)),
++                            Path.Combine(map, Path.GetFileName(saveSubfloorPath))));
  
                          mapNames.Add(fileName);
                          i++;
-@@ -206,7 +213,11 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -206,7 +215,11 @@ private static async Task Run(CommandLineArguments arguments)
  
                  if (arguments.ExportViewerJson)
                  {
@@ -334,7 +313,7 @@ index 7314119108..e82046b443 100644
 +                    var json = JsonConvert.SerializeObject(mapViewerData, new JsonSerializerSettings
 +                    {
 +                        ContractResolver = new CamelCasePropertyNamesContractResolver(),
-+                        Formatting = Formatting.Indented
++                        Formatting = Formatting.Indented,
 +                    });
                      await File.WriteAllTextAsync(Path.Combine(arguments.OutputPath, map, "map.json"), json);
                  }
