@@ -1,14 +1,12 @@
-import {ImageTile, Map, View} from "ol";
+import { Map, View } from "ol";
 import { getCenter } from "ol/extent";
 import Projection from "ol/proj/Projection";
-import Image from "ol/layer/Image"
 import ImageStatic from "ol/source/ImageStatic";
 import Parallax from "./ParallaxLayer";
 import Config from "./Config.js";
-import TileLayer from "ol/layer/Tile.js";
-import {XYZ} from "ol/source.js";
-import TileGrid from "ol/tilegrid/TileGrid.js";
-import TileImagePreloader from "./TileImagePreloader.js";
+import TileLayer from "ol/layer/Tile";
+import { XYZ } from "ol/source";
+import TileGrid from "ol/tilegrid/TileGrid";
 
 class MapLoader {
 	static async loadMap(mapName) {
@@ -87,10 +85,10 @@ class MapLoader {
 	}
 
 	/**
-	 * 
-	 * @param {*} data 
-	 * @param {Projection} projection 
-	 * @returns 
+	 *
+	 * @param {*} data
+	 * @param {Projection} projection
+	 * @returns
 	 */
 	static createLayers(data, projection) {
 
@@ -107,7 +105,7 @@ class MapLoader {
 					interpolate: false,
 					projection: projection
 				});
-				
+
 				const parallax = new Parallax([parallaxData.scale.x, parallaxData.scale.y], [parallaxData.offset.x, parallaxData.offset.y], {
 					simple: parallaxData.static,
 					//extent: data.extent,
@@ -146,7 +144,7 @@ class MapLoader {
 		{
 			let mapLayer;
 			var extent = gridLayer.extent;
-			
+
 			if (i > 0)
 			{
 				extent.x1 -= /*4.12 **/ gridLayer.offset.x - extent.x2;
@@ -164,53 +162,47 @@ class MapLoader {
 
 			//console.log(gridLayer.url);
 
-			if (gridLayer.tiled) {
-				mapLayer = new TileLayer({
-					extent: [extent.x1, extent.y1, extent.x2, extent.y2],
-					updateWhileInteracting: true,
-					updateWhileAnimating: true,
-					source: new XYZ({
-						attributions: data.attributions,
-						url: "https://" + gridLayer.url.replace(/https?:\/\//, "") + "/{x}/{y}/{z}",
-						tileGrid: new TileGrid({
-							extent: [extent.x1, extent.y1, extent.x2, extent.y2],
-							maxZoom: 0,
-							resolutions: [1],
-							tileSize: [gridLayer.tileSize, gridLayer.tileSize],
-						}),
-						interpolate: false,
-						projection: projection,
-						wrapX: false
-					})
-				});
-
-			} else {
-				
-				mapLayer = new Image({
-					source: new ImageStatic({
-						attributions: data.attributions,
-						url: `maps/${gridLayer.url}`,
-						interpolate: false,
-						projection: projection,
-						imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
-						imageSmoothing: false
-					}),
-				});
-			
-			}
-
-			// Add the subfloor layer
-			const subfloorLayer = new Image({
-				name: 'subfloor',
-				visible: false,
-				source: new ImageStatic({
+			mapLayer = new TileLayer({
+				extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+				updateWhileInteracting: true,
+				updateWhileAnimating: true,
+				source: new XYZ({
 					attributions: data.attributions,
-					url: `maps/${gridLayer.subfloorUrl}`,
+					url: `/maps/${gridLayer.url.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
+					size: [extent.x2, extent.y2],
+					tileGrid: new TileGrid({
+					extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+						maxZoom: 0,
+						resolutions: [1],
+						tileSize: [256, 256],
+					}),
 					interpolate: false,
 					projection: projection,
-					imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
-					imageSmoothing: false
-				}),
+					wrapX: false
+				})
+			});
+
+			// Add the subfloor layer
+			const subfloorLayer =  new TileLayer({
+				name: 'subfloor',
+				visible: false,
+				extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+				updateWhileInteracting: true,
+				updateWhileAnimating: true,
+				source: new XYZ({
+					attributions: data.attributions,
+					url: `/maps/${gridLayer.subfloorUrl.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
+					size: [extent.x2, extent.y2],
+					tileGrid: new TileGrid({
+						extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+						maxZoom: 0,
+						resolutions: [1],
+						tileSize: [256, 256],
+					}),
+					interpolate: false,
+					projection: projection,
+					wrapX: false
+				})
 			});
 
 			function updateSmoothing(evt) {
@@ -227,9 +219,9 @@ class MapLoader {
 					evt.context.msImageSmoothingEnabled = false;
 				}
 			};
-			subfloorLayer.on('prerender', updateSmoothing);
 			mapLayer.on('prerender', updateSmoothing);
-			
+			subfloorLayer.on('prerender', updateSmoothing);
+
 			gridLayers.push(mapLayer);
 			gridLayers.push(subfloorLayer);
 			i++;

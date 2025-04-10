@@ -1,4 +1,4 @@
-﻿name: Render, Build, and Deploy
+﻿name: Render and Deploy
 
 on:
   push:
@@ -11,11 +11,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAP_IMAGES_CACHE_BUST_VERSION: v7
-  MAP_RENDERER_CACHE_BUST_VERSION: v7
+  MAP_IMAGES_CACHE_BUST_VERSION: v1
+  MAP_RENDERER_CACHE_BUST_VERSION: v1
 
 jobs:
-  build-map-renderer:
+  build-renderer:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,39 +26,39 @@ jobs:
         id: submodule-sha
         run: echo "SUBMODULE_SHA=$(git ls-tree --object-only HEAD ss14-sunrise)" >> $GITHUB_ENV
 
-      - name: Cache map renderer
-        id: cache-map-renderer
+      - name: Cache renderer
+        id: cache-renderer
         uses: actions/cache@v4
         with:
-          key: build-map-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
+          key: build-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
           path: ss14-sunrise/bin
           lookup-only: true # Skip download as the job doesn't need it
 
       - name: Checkout submodules reqursively
-        if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         run: git submodule update --init --recursive --single-branch --depth 1
 
       - name: Set up .NET
-        if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
 
       - name: Restore .NET dependencies
-        if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         run: dotnet restore ss14-sunrise/Content.MapRenderer
 
       - name: Apply map renderer patch
-        if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         run: git -C ss14-sunrise apply ../patches/map-renderer.patch
 
       - name: Build map renderer
-        if: ${{ steps.cache-map-renderer.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         run: dotnet build ss14-sunrise/Content.MapRenderer --configuration Release --no-restore
 
-  render-maps:
+  render:
     runs-on: ubuntu-latest
-    needs: build-map-renderer
+    needs: build-renderer
 
     strategy:
       matrix:
@@ -74,35 +74,35 @@ jobs:
         run: echo "SUBMODULE_SHA=$(git ls-tree --object-only HEAD ss14-sunrise)" >> $GITHUB_ENV
 
       - name: Cache map images
-        id: cache-map-images
+        id: cache-images
         uses: actions/cache@v4
         with:
           key: map-${{ matrix.map }}-${{ env.SUBMODULE_SHA }}-${{ env.MAP_IMAGES_CACHE_BUST_VERSION }}
           path: ss14-sunrise/Resources/MapImages
 
       - name: Checkout Sunrise and Robust submodules
-        if: ${{ steps.cache-map-images.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
         run: |
           git submodule update --init --single-branch --depth 1 ss14-sunrise
           git -C ss14-sunrise submodule update --init --single-branch --depth 1 RobustToolbox
 
       - name: Restore map renderer
-        if: ${{ steps.cache-map-images.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
         id: restore-map-renderer
         uses: actions/cache/restore@v4
         with:
-          key: build-map-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
+          key: build-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
           path: ss14-sunrise/bin
           fail-on-cache-miss: true
 
       - name: Set up .NET
-        if: ${{ steps.cache-map-images.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
 
       - name: Render map
-        if: ${{ steps.cache-map-images.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
         run: ss14-sunrise/bin/Content.MapRenderer/Content.MapRenderer --viewer --format webp "${{ matrix.map }}"
 
       - name: Upload map images as artifact
@@ -111,15 +111,15 @@ jobs:
           name: map-${{ matrix.map }}
           path: ss14-sunrise/Resources/MapImages
 
-  build-map-viewer:
+  build-viewer:
     runs-on: ubuntu-latest
-    needs: render-maps
+    needs: render
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all map images
+      - name: Download map images
         uses: actions/download-artifact@v4
         with:
           path: public/maps
@@ -128,6 +128,14 @@ jobs:
 
       - name: List map images
         run: ls -R public/maps
+
+      - name: Install libvips
+        run: |
+          sudo apt update
+          sudo apt install -y libvips-dev
+
+      - name: Cut map images into tiles
+        run: scripts/cut-into-tiles.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -152,7 +160,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build-map-viewer
+    needs: build-viewer
 
     permissions:
       pages: write
