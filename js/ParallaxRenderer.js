@@ -1,5 +1,4 @@
 import { fromUserExtent } from "ol/proj";
-import Parallax from "./ParallaxLayer";
 import CanvasImageLayerRenderer from "ol/renderer/canvas/ImageLayer";
 import { compose as composeTransform, makeInverse, toString as toTransformString } from "ol/transform";
 import { containsExtent, intersects as intersectsExtent } from "ol/extent";
@@ -8,8 +7,8 @@ import AsyncImage from "./AsyncImage";
 class ParallaxRenderer extends CanvasImageLayerRenderer {
 
 	/**
-	 * 
-	 * @param {Parallax} parallaxLayer 
+	 *
+	 * @param {Parallax} parallaxLayer
 	 */
 	constructor(parallaxLayer) {
 		super(parallaxLayer);
@@ -24,8 +23,8 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 	}
 
 	/**
-	 * 
-	 * @param {import("ol/pixel").Pixel} pixel 
+	 *
+	 * @param {import("ol/pixel").Pixel} pixel
 	 * @returns {Uint8ClampedArray}
 	 */
 	getData(pixel) {
@@ -43,7 +42,7 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
    * @return {HTMLElement} The rendered element.
    */
 	renderFrame(frameState, target) {
-		const image = this.image_;
+		const image = this.image;
 		const imageExtent = image.getExtent();
 		const imageResolution = image.getResolution();
 		const imagePixelRatio = image.getPixelRatio();
@@ -156,7 +155,7 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 			if (!this.isSimple) {
 
 				this.drawPatternParallaxLayers(context, img, viewResolution, xOffsetFromCenter, yOffsetFromCenter, viewCenter, this.parentExtent);
-			
+
 			} else {
 				context.globalCompositeOperation = 'source-over';
 				context.drawImage(
@@ -223,12 +222,12 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 	drawPatternParallaxLayers(context, img, pixelSize, xOffsetFromCenter, yOffsetFromCenter, viewCenter, imageExtent) {
 		const clientWidth = context.canvas.clientWidth;
 		const clientHeight = context.canvas.clientHeight;
-		
+
 		if (!this.layers) {
 			context.globalCompositeOperation = 'source-over';
 			this.fillWithImage(context, xOffsetFromCenter, yOffsetFromCenter, [clientWidth, clientHeight], 1, img);
 		}
-		
+
 		var imageScale = 1 / pixelSize;
 		if (this.minScale && imageScale < this.minScale)
 			imageScale = this.minScale;
@@ -261,7 +260,7 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 				this.fillWithImage(data.context, data.xOffsetFromCenter, data.yOffsetFromCenter, data.size, data.scale, image);
 				if (isAsync) this.changed();
 			}, data);
-			
+
 		}
 	}
 }

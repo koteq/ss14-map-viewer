@@ -11,11 +11,11 @@
     "create-maps-list": "node scripts/create-maps-list.js"
   },
   "devDependencies": {
-    "vite": "^4.3.9"
+    "vite": "^6.2.6"
   },
   "dependencies": {
-    "ajv": "^8.12.0",
-    "ol": "^7.4.0"
+    "ajv": "^8.17.1",
+    "ol": "^10.5.0"
   },
-  "packageManager": "npm@10.2.1+sha1.41fd6626a08d4167b8639edd272ecf9735e7ceaf"
+  "packageManager": "npm@11.3.0"
 }
