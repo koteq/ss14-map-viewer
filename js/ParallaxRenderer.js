@@ -45,6 +45,9 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 		const image = this.image;
 		const imageExtent = image.getExtent();
 		const imageResolution = image.getResolution();
+		const [imageResolutionX, imageResolutionY] = Array.isArray(imageResolution)
+			? imageResolution
+			: [imageResolution, imageResolution];
 		const imagePixelRatio = image.getPixelRatio();
 		const layerState = frameState.layerStatesArray[frameState.layerIndex];
 		const pixelRatio = frameState.pixelRatio;
@@ -52,7 +55,10 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 		const viewCenter = viewState.center;
 		const viewResolution = viewState.resolution;
 		const size = frameState.size;
-		const imageScale = (pixelRatio * imageResolution) / (viewResolution * imagePixelRatio);
+		const scaleX =
+			(pixelRatio * imageResolutionX) / (viewResolution * imagePixelRatio);
+		const scaleY =
+			(pixelRatio * imageResolutionY) / (viewResolution * imagePixelRatio);
 
 		let width = Math.round(size[0] * pixelRatio);
 		let height = Math.round(size[1] * pixelRatio);
@@ -81,7 +87,6 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 		this.useContainer(
 			target,
 			canvasTransform,
-			layerState.opacity,
 			this.getBackground(frameState)
 		);
 
@@ -110,15 +115,15 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 			}
 		}
 
-		const xOffsetFromCenter = (viewCenter[0] - this.parentExtent[2] / 2) * this.scale[0] * (this.isSimple ? 1 : (imageScale / 100)) + this.offset[0];
-		const yOffsetFromCenter = (viewCenter[1] - this.parentExtent[3] / 2) * this.scale[1] * (this.isSimple ? 1 : (imageScale / 100)) + this.offset[1];
+		const xOffsetFromCenter = (viewCenter[0] - this.parentExtent[2] / 2) * this.scale[0] * (this.isSimple ? 1 : (scaleX / 100)) + this.offset[0];
+		const yOffsetFromCenter = (viewCenter[1] - this.parentExtent[3] / 2) * this.scale[1] * (this.isSimple ? 1 : (scaleY / 100)) + this.offset[1];
 
 		const transform = composeTransform(
 			this.tempTransform,
 			width / 2,
 			height / 2,
-			imageScale,
-			imageScale,
+			scaleX,
+			scaleY,
 			0,
 			(imagePixelRatio * (imageExtent[0] - viewCenter[0])) + xOffsetFromCenter / imageResolution,
 			(imagePixelRatio * (viewCenter[1] - imageExtent[3])) - yOffsetFromCenter / imageResolution
@@ -141,6 +146,7 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 			//Image smoothing used to be disabled here
 		//}
 
+		debugger;
 		this.preRender(context, frameState);
 		if (render && dw >= 0.5 && dh >= 0.5) {
 			const dx = transform[4];

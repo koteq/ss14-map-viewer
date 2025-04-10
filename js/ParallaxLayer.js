@@ -6,10 +6,10 @@ import ParallaxRenderer from "./ParallaxRenderer";
  */
 class Parallax extends BaseImageLayer {
 	/**
-	 * 
-	 * @param {[number, number]} scale 
-	 * @param {[number, number]} offset 
-	 * @param {import("ol/Collection").Options<ImageSourceType>} opt_options 
+	 *
+	 * @param {[number, number]} scale
+	 * @param {[number, number]} offset
+	 * @param {import("ol/layer/BaseImage").Options<ImageSourceType>} opt_options
 	 */
 	constructor(scale, offset, opt_options) {
 		super(opt_options);
@@ -27,8 +27,8 @@ class Parallax extends BaseImageLayer {
 	}
 
 	/**
-	 * 
-	 * @param {import("ol/pixel").Pixel} pixel 
+	 *
+	 * @param {import("ol/pixel").Pixel} pixel
 	 * @returns {Uint8ClampedArray}
 	 */
 	getData(pixel) {
