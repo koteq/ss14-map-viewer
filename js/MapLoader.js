@@ -168,7 +168,7 @@ class MapLoader {
 				updateWhileAnimating: true,
 				source: new XYZ({
 					attributions: data.attributions,
-					url: `/maps/${gridLayer.url.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
+					url: `maps/${gridLayer.url.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
 					size: [extent.x2, extent.y2],
 					tileGrid: new TileGrid({
 					extent: [extent.x1, extent.y1, extent.x2, extent.y2],
@@ -191,7 +191,7 @@ class MapLoader {
 				updateWhileAnimating: true,
 				source: new XYZ({
 					attributions: data.attributions,
-					url: `/maps/${gridLayer.subfloorUrl.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
+					url: `maps/${gridLayer.subfloorUrl.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
 					size: [extent.x2, extent.y2],
 					tileGrid: new TileGrid({
 						extent: [extent.x1, extent.y1, extent.x2, extent.y2],

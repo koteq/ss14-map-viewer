@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAP_IMAGES_CACHE_BUST_VERSION: v1
+  MAP_IMAGES_CACHE_BUST_VERSION: v2
   MAP_RENDERER_CACHE_BUST_VERSION: v1
 
 jobs:
@@ -103,7 +103,7 @@ jobs:
 
       - name: Render map
         if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
-        run: ss14-sunrise/bin/Content.MapRenderer/Content.MapRenderer --viewer --format webp "${{ matrix.map }}"
+        run: ss14-sunrise/bin/Content.MapRenderer/Content.MapRenderer --viewer "${{ matrix.map }}"
 
       - name: Upload map images as artifact
         uses: actions/upload-artifact@v4
@@ -131,8 +131,8 @@ jobs:
 
       - name: Install libvips
         run: |
-          sudo apt update
-          sudo apt install -y libvips-dev
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
 
       - name: Cut map images into tiles
         run: scripts/cut-into-tiles.sh
