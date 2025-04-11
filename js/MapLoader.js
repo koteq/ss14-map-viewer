@@ -220,6 +220,7 @@ class MapLoader {
 
 				subfloorLayer = new Image({
 					name: 'subfloor',
+					visible: false,
 					source: new ImageStatic({
 						attributions: data.attributions,
 						url: `maps/${gridLayer.subfloorUrl}`,
