@@ -146,7 +146,6 @@ class ParallaxRenderer extends CanvasImageLayerRenderer {
 			//Image smoothing used to be disabled here
 		//}
 
-		debugger;
 		this.preRender(context, frameState);
 		if (render && dw >= 0.5 && dh >= 0.5) {
 			const dx = transform[4];

@@ -79,7 +79,7 @@ class MapLoader {
 			console.log(evt.coordinate);
 		});
 
-		map.set('map-name', data.name);
+		map.set('map-name', data.id);
 
 		return map;
 	}
@@ -143,6 +143,7 @@ class MapLoader {
 		for(const gridLayer of data.grids)
 		{
 			let mapLayer;
+			let subfloorLayer
 			var extent = gridLayer.extent;
 
 			if (i > 0)
@@ -162,50 +163,76 @@ class MapLoader {
 
 			//console.log(gridLayer.url);
 
-			mapLayer = new TileLayer({
-				extent: [extent.x1, extent.y1, extent.x2, extent.y2],
-				updateWhileInteracting: true,
-				updateWhileAnimating: true,
-				source: new XYZ({
-					attributions: data.attributions,
-					url: `maps/${gridLayer.url.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
-					size: [extent.x2, extent.y2],
-					tileGrid: new TileGrid({
+			if (gridLayer.tiled) {
+				mapLayer = new TileLayer({
 					extent: [extent.x1, extent.y1, extent.x2, extent.y2],
-						maxZoom: 0,
-						resolutions: [1],
-						tileSize: [256, 256],
-					}),
-					interpolate: false,
-					projection: projection,
-					wrapX: false
-				})
-			});
+					updateWhileInteracting: true,
+					updateWhileAnimating: true,
+					source: new XYZ({
+						attributions: data.attributions,
+						url: gridLayer.url,
+						size: [extent.x2, extent.y2],
+						tileGrid: new TileGrid({
+							extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+							maxZoom: 0,
+							resolutions: [1],
+							tileSize: [gridLayer.tileSize, gridLayer.tileSize],
+						}),
+						interpolate: false,
+						projection: projection,
+						wrapX: false
+					})
+				});
 
-			// Add the subfloor layer
-			const subfloorLayer =  new TileLayer({
-				name: 'subfloor',
-				visible: false,
-				extent: [extent.x1, extent.y1, extent.x2, extent.y2],
-				updateWhileInteracting: true,
-				updateWhileAnimating: true,
-				source: new XYZ({
-					attributions: data.attributions,
-					url: `maps/${gridLayer.subfloorUrl.replace(".png", "")}-tiles/{z}/{y}/{x}.png`,
-					size: [extent.x2, extent.y2],
-					tileGrid: new TileGrid({
-						extent: [extent.x1, extent.y1, extent.x2, extent.y2],
-						maxZoom: 0,
-						resolutions: [1],
-						tileSize: [256, 256],
-					}),
-					interpolate: false,
-					projection: projection,
-					wrapX: false
-				})
-			});
+				subfloorLayer = new TileLayer({
+					name: 'subfloor',
+					visible: false,
+					extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+					updateWhileInteracting: true,
+					updateWhileAnimating: true,
+					source: new XYZ({
+						attributions: data.attributions,
+						url: gridLayer.subfloorUrl,
+						size: [extent.x2, extent.y2],
+						tileGrid: new TileGrid({
+							extent: [extent.x1, extent.y1, extent.x2, extent.y2],
+							maxZoom: 0,
+							resolutions: [1],
+							tileSize: [gridLayer.subfloorTileSize, gridLayer.subfloorTileSize],
+						}),
+						interpolate: false,
+						projection: projection,
+						wrapX: false
+					})
+				});
+			} else {
 
-			function updateSmoothing(evt) {
+				mapLayer = new Image({
+					source: new ImageStatic({
+						attributions: data.attributions,
+						url: `maps/${gridLayer.url}`,
+						interpolate: false,
+						projection: projection,
+						imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
+						imageSmoothing: false
+					}),
+				});
+
+				subfloorLayer = new Image({
+					name: 'subfloor',
+					source: new ImageStatic({
+						attributions: data.attributions,
+						url: `maps/${gridLayer.subfloorUrl}`,
+						interpolate: false,
+						projection: projection,
+						imageExtent: [extent.x1, extent.y1, extent.x2, extent.y2],
+						imageSmoothing: false
+					}),
+				});
+			}
+
+
+				function updateSmoothing(evt) {
 				if (evt.frameState.viewState.zoom < 2) {
 					evt.context.imageSmoothingEnabled = true;
 					evt.context.webkitImageSmoothingEnabled = true;

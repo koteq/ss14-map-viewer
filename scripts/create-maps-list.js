@@ -1,14 +1,16 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import fs from 'node:fs';
+import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
-const mapsDir = 'public/maps';
-const outputFile = 'public/maps/list.json';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const publicDir = resolve(__dirname, '../public');
 
 const maps = [];
-for (const entry of await fs.readdir(mapsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const content = await fs.readFile(path.join(mapsDir, entry.name, 'map.json'), 'utf-8');
-    const { id, name } = JSON.parse(content);
-    maps.push({ id, name });
+for (const entry of fs.readdirSync(join(publicDir, 'maps'), { withFileTypes: true })) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+    const content = fs.readFileSync(join(publicDir, 'maps', entry.name, 'map.json'), 'utf-8');
+    const { id } = JSON.parse(content);
+    maps.push({ id, name: id });
 }
-await fs.writeFile(outputFile, JSON.stringify({ maps }, null, 2), 'utf-8');
+fs.writeFileSync(join(publicDir, 'maps/list.json'), JSON.stringify({ maps }, null, 2), 'utf-8');
