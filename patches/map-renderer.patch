@@ -90,18 +90,19 @@ index 8aad0c7e93..8ce3159368 100644
 +    public readonly SubFloorHideComponent? SubFloor = SubFloor;
  }
 diff --git a/Content.MapRenderer/Painters/EntityPainter.cs b/Content.MapRenderer/Painters/EntityPainter.cs
-index 2c70481b8a..6455c37127 100644
+index 0eef467f9a..3a211dee46 100644
 --- a/Content.MapRenderer/Painters/EntityPainter.cs
 +++ b/Content.MapRenderer/Painters/EntityPainter.cs
-@@ -10,6 +10,7 @@
+@@ -10,6 +10,8 @@
  using SixLabors.ImageSharp.PixelFormats;
  using SixLabors.ImageSharp.Processing;
  using static Robust.UnitTesting.RobustIntegrationTest;
++using Robust.Shared.Maths;
 +using DrawDepth = Content.Shared.DrawDepth.DrawDepth;
  
  namespace Content.MapRenderer.Painters;
  
-@@ -32,17 +33,28 @@ public EntityPainter(ClientIntegrationInstance client, ServerIntegrationInstance
+@@ -32,17 +34,28 @@ public EntityPainter(ClientIntegrationInstance client, ServerIntegrationInstance
          _errorImage = Image.Load<Rgba32>(_resManager.ContentFileRead("/Textures/error.rsi/error.png"));
      }
  
@@ -132,6 +133,33 @@ index 2c70481b8a..6455c37127 100644
              Run(canvas, entity, xformSystem);
          }
  
+@@ -130,21 +143,21 @@ public void Run(Image canvas, EntityData entity, SharedTransformSystem xformSyst
+             }
+ 
+             var colorMix = entity.Sprite.Color * layer.Color;
+-            var imageColor = Color.FromRgba(colorMix.RByte, colorMix.GByte, colorMix.BByte, colorMix.AByte);
++            var imageColor = SixLabors.ImageSharp.Color.FromRgba(colorMix.RByte, colorMix.GByte, colorMix.BByte, colorMix.AByte);
+             var coloredImage = new Image<Rgba32>(image.Width, image.Height);
+             coloredImage.Mutate(o => o.BackgroundColor(imageColor));
+ 
+             var (imgX, imgY) = rsi?.Size ?? (EyeManager.PixelsPerMeter, EyeManager.PixelsPerMeter);
+-            var offsetX = (int) (entity.Sprite.Offset.X * EyeManager.PixelsPerMeter);
+-            var offsetY = (int) (entity.Sprite.Offset.Y * EyeManager.PixelsPerMeter);
++            var (offsetX, offsetY) = Angle.FromDegrees(worldRotation.Degrees).RotateVec(entity.Sprite.Offset) *
++                                     EyeManager.PixelsPerMeter;
+             image.Mutate(o => o
+                 .DrawImage(coloredImage, PixelColorBlendingMode.Multiply, PixelAlphaCompositionMode.SrcAtop, 1)
+                 .Resize(imgX, imgY)
+                 .Flip(FlipMode.Vertical)
+                 .Rotate(spriteRotation));
+ 
+-            var pointX = (int) entity.X + offsetX - imgX / 2;
+-            var pointY = (int) entity.Y + offsetY - imgY / 2;
++            var pointX = (int) entity.X + (int)offsetX - imgX / 2;
++            var pointY = (int) entity.Y + (int)offsetY - imgY / 2;
+             canvas.Mutate(o => o.DrawImage(image, new Point(pointX, pointY), 1));
+         }
+     }
 diff --git a/Content.MapRenderer/Painters/GridPainter.cs b/Content.MapRenderer/Painters/GridPainter.cs
 index d8d6e15378..2043169c16 100644
 --- a/Content.MapRenderer/Painters/GridPainter.cs
