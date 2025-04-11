@@ -34,7 +34,7 @@ jobs:
           path: ss14-sunrise/bin
           lookup-only: true # Skip download as the job doesn't need it
 
-      - name: Checkout submodules reqursively
+      - name: Checkout submodules recursively
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         run: git submodule update --init --recursive --single-branch --depth 1
 
@@ -56,14 +56,37 @@ jobs:
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
         run: dotnet build ss14-sunrise/Content.MapRenderer --configuration Release --no-restore
 
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      maps: ${{ steps.parse-maps-pool.outputs.json }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Sunrise submodule
+        run: git submodule update --init --single-branch --depth 1 ss14-sunrise
+
+      - name: Parse maps pool to JSON
+        id: parse-maps-pool
+        uses: mikefarah/yq@master
+        with:
+          cmd: |
+            pool_file="ss14-sunrise/Resources/Prototypes/_Sunrise/Maps/Pools/default.yml"
+            json=$(cat "$pool_file" | yq --output-format=json --indent=0 '.[0].maps | unique')
+            echo "json=${json}" >> $GITHUB_OUTPUT
+
   render:
     runs-on: ubuntu-latest
-    needs: build-renderer
+    needs:
+      - build-renderer
+      - prepare-matrix
 
     strategy:
       matrix:
-        # See Resources/Prototypes/_Sunrise/Maps/Pools/default.yml
-        map: [SunriseDelta, SunriseBox]
+#        map: [SunriseBox]
+        map: ${{ fromJSON(needs.prepare-matrix.outputs.maps) }}
 
     steps:
       - name: Checkout repository
