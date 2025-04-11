@@ -1,6 +1,7 @@
 import { Map, View } from "ol";
 import { getCenter, getArea } from "ol/extent";
 import Projection from "ol/proj/Projection";
+import Image from "ol/layer/Image"
 import ImageStatic from "ol/source/ImageStatic";
 import Parallax from "./ParallaxLayer";
 import Config from "./Config.js";
