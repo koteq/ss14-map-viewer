@@ -1,5 +1,5 @@
 import { Map, View } from "ol";
-import { getCenter } from "ol/extent";
+import { getCenter, getArea } from "ol/extent";
 import Projection from "ol/proj/Projection";
 import ImageStatic from "ol/source/ImageStatic";
 import Parallax from "./ParallaxLayer";
@@ -22,7 +22,7 @@ class MapLoader {
 			throw new Error(`Failed to retrive map data! Status: ${response.status}`);
 		}
 		const data = await response.json();
-		data.grids = data.grids.sort((a, b) => a.gridId > b.gridId );
+		data.grids = data.grids.sort((a, b) => getArea(a.extent) > getArea(b.extent));
 		return data;
 	}
 
