@@ -166,7 +166,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends libvips-tools
 
       - name: Create map list
-        run: npm run create-maps-list
+        run: npm run create-map-list
 
       - name: Cut map images into tiles
         run: npm run cut-into-tiles

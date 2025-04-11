@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host",
     "update-patch": "bash scripts/update-patch.sh",
-    "create-maps-list": "node scripts/create-maps-list.js",
+    "create-map-list": "node scripts/create-map-list.js",
     "cut-into-tiles": "node scripts/cut-into-tiles.js"
   },
   "devDependencies": {
