@@ -5,6 +5,9 @@ on:
     branches:
       - master
   workflow_dispatch:
+  schedule:
+    - cron: "0 22 * * 1" # Every Monday at 22:00 UTC
+    - cron: "0 22 * * 5" # Every Friday at 22:00 UTC
 
 concurrency:
   group: render-build-deploy-${{ github.ref }}
@@ -13,6 +16,8 @@ concurrency:
 env:
   MAP_IMAGES_CACHE_BUST_VERSION: v2
   MAP_RENDERER_CACHE_BUST_VERSION: v1
+  SS14_REPO: space-sunrise/sunrise-station
+  SS14_MAP_POOL: Resources/Prototypes/_Sunrise/Maps/Pools/default.yml
 
 jobs:
   build-renderer:
@@ -22,21 +27,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Sunrise submodule version
+      - name: Get SS14 SHA for caching
         id: submodule-sha
-        run: echo "SUBMODULE_SHA=$(git ls-tree --object-only HEAD ss14-sunrise)" >> $GITHUB_ENV
+        run: echo "SS14_SHA=$(curl -s https://api.github.com/repos/${{ env.SS14_REPO }}/commits/master | jq -r '.sha')" >> $GITHUB_ENV
 
       - name: Cache renderer
         id: cache-renderer
         uses: actions/cache@v4
         with:
-          key: build-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
-          path: ss14-sunrise/bin
+          key: build-renderer-${{ env.SS14_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
+          path: ss14/bin
           lookup-only: true # Skip download as the job doesn't need it
 
-      - name: Checkout submodules recursively
+      - name: Checkout SS14 with all submodules
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
-        run: git submodule update --init --recursive --single-branch --depth 1
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SS14_REPO }}
+          path: ss14
+          submodules: recursive
 
       - name: Set up .NET
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
@@ -46,15 +55,15 @@ jobs:
 
       - name: Restore .NET dependencies
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
-        run: dotnet restore ss14-sunrise/Content.MapRenderer
+        run: dotnet restore ss14/Content.MapRenderer
 
       - name: Apply map renderer patch
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
-        run: git -C ss14-sunrise apply ../patches/map-renderer.patch
+        run: git -C ss14 apply ../patches/map-renderer.patch
 
       - name: Build map renderer
         if: ${{ steps.cache-renderer.outputs.cache-hit != 'true' }}
-        run: dotnet build ss14-sunrise/Content.MapRenderer --configuration Release --no-restore
+        run: dotnet build ss14/Content.MapRenderer --configuration Release --no-restore
 
   prepare-matrix:
     runs-on: ubuntu-latest
@@ -65,15 +74,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Checkout Sunrise submodule
-        run: git submodule update --init --single-branch --depth 1 ss14-sunrise
+      - name: Checkout SS14
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SS14_REPO }}
+          path: ss14
+          submodules: false
 
       - name: Parse maps pool to JSON
         id: parse-maps-pool
         uses: mikefarah/yq@master
         with:
           cmd: |
-            pool_file="ss14-sunrise/Resources/Prototypes/_Sunrise/Maps/Pools/default.yml"
+            pool_file="ss14/${{ env.SS14_MAP_POOL }}"
             json=$(cat "$pool_file" | yq --output-format=json --indent=0 '.[0].maps | unique')
             echo "json=${json}" >> $GITHUB_OUTPUT
 
@@ -92,30 +105,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Sunrise submodule version
+      - name: Get SS14 SHA for caching
         id: submodule-sha
-        run: echo "SUBMODULE_SHA=$(git ls-tree --object-only HEAD ss14-sunrise)" >> $GITHUB_ENV
+        run: echo "SS14_SHA=$(curl -s https://api.github.com/repos/${{ env.SS14_REPO }}/commits/master | jq -r '.sha')" >> $GITHUB_ENV
 
       - name: Cache map images
         id: cache-images
         uses: actions/cache@v4
         with:
-          key: map-${{ matrix.map }}-${{ env.SUBMODULE_SHA }}-${{ env.MAP_IMAGES_CACHE_BUST_VERSION }}
-          path: ss14-sunrise/Resources/MapImages
+          key: map-${{ matrix.map }}-${{ env.SS14_SHA }}-${{ env.MAP_IMAGES_CACHE_BUST_VERSION }}
+          path: ss14/Resources/MapImages
 
-      - name: Checkout Sunrise and Robust submodules
+      - name: Checkout SS14 with submodules
         if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
-        run: |
-          git submodule update --init --single-branch --depth 1 ss14-sunrise
-          git -C ss14-sunrise submodule update --init --single-branch --depth 1 RobustToolbox
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SS14_REPO }}
+          path: ss14
+          submodules: true
 
       - name: Restore map renderer
         if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
         id: restore-map-renderer
         uses: actions/cache/restore@v4
         with:
-          key: build-renderer-${{ env.SUBMODULE_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
-          path: ss14-sunrise/bin
+          key: build-renderer-${{ env.SS14_SHA }}-${{ env.MAP_RENDERER_CACHE_BUST_VERSION }}
+          path: ss14/bin
           fail-on-cache-miss: true
 
       - name: Set up .NET
@@ -126,13 +141,13 @@ jobs:
 
       - name: Render map
         if: ${{ steps.cache-images.outputs.cache-hit != 'true' }}
-        run: ss14-sunrise/bin/Content.MapRenderer/Content.MapRenderer --viewer "${{ matrix.map }}"
+        run: ss14/bin/Content.MapRenderer/Content.MapRenderer --viewer "${{ matrix.map }}"
 
       - name: Upload map images as artifact
         uses: actions/upload-artifact@v4
         with:
           name: map-${{ matrix.map }}
-          path: ss14-sunrise/Resources/MapImages
+          path: ss14/Resources/MapImages
 
   build-viewer:
     runs-on: ubuntu-latest
