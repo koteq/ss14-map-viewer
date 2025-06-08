@@ -207,7 +207,7 @@ index ed17d0d3d6..e9e9b072fa 100644
                      components.GetOrAdd(transform.GridUid.Value, _ => new List<EntityData>()).Add(data);
                  }
 diff --git a/Content.MapRenderer/Painters/MapPainter.cs b/Content.MapRenderer/Painters/MapPainter.cs
-index e861227bcc..770b977156 100644
+index e861227bcc..0e9b63a3aa 100644
 --- a/Content.MapRenderer/Painters/MapPainter.cs
 +++ b/Content.MapRenderer/Painters/MapPainter.cs
 @@ -21,12 +21,13 @@
@@ -259,7 +259,7 @@ index e861227bcc..770b977156 100644
 +
 +                await server.WaitPost(() =>
 +                {
-+                    entityPainter.Run(subfloorCanvas, uid, grid, true);
++                    entityPainter.Run(subfloorCanvas, uid, grid, default, true);
 +
 +                    subfloorCanvas.Mutate(e => e.Flip(FlipMode.Vertical));
 +                });
