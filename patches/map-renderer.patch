@@ -90,10 +90,10 @@ index 8aad0c7e93..8ce3159368 100644
 +    public readonly SubFloorHideComponent? SubFloor = SubFloor;
  }
 diff --git a/Content.MapRenderer/Painters/EntityPainter.cs b/Content.MapRenderer/Painters/EntityPainter.cs
-index 0eef467f9a..3a211dee46 100644
+index 0c751b8583..3f41fdc2aa 100644
 --- a/Content.MapRenderer/Painters/EntityPainter.cs
 +++ b/Content.MapRenderer/Painters/EntityPainter.cs
-@@ -10,6 +10,8 @@
+@@ -11,6 +11,8 @@
  using SixLabors.ImageSharp.PixelFormats;
  using SixLabors.ImageSharp.Processing;
  using static Robust.UnitTesting.RobustIntegrationTest;
@@ -102,12 +102,12 @@ index 0eef467f9a..3a211dee46 100644
  
  namespace Content.MapRenderer.Painters;
  
-@@ -32,17 +34,28 @@ public EntityPainter(ClientIntegrationInstance client, ServerIntegrationInstance
+@@ -35,17 +37,28 @@ public EntityPainter(ClientIntegrationInstance client, ServerIntegrationInstance
          _errorImage = Image.Load<Rgba32>(_resManager.ContentFileRead("/Textures/error.rsi/error.png"));
      }
  
--    public void Run(Image canvas, List<EntityData> entities)
-+    public void Run(Image canvas, List<EntityData> entities, bool subfloorOnly)
+-    public void Run(Image canvas, List<EntityData> entities, Vector2 customOffset = default)
++    public void Run(Image canvas, List<EntityData> entities, Vector2 customOffset = default, bool subfloorOnly = false)
      {
          var stopwatch = new Stopwatch();
          stopwatch.Start();
@@ -130,10 +130,10 @@ index 0eef467f9a..3a211dee46 100644
          foreach (var entity in entities)
          {
 +            if (subfloorOnly && entity.SubFloor == null) continue;
-             Run(canvas, entity, xformSystem);
+             Run(canvas, entity, xformSystem, customOffset);
          }
  
-@@ -130,21 +143,21 @@ public void Run(Image canvas, EntityData entity, SharedTransformSystem xformSyst
+@@ -133,21 +146,21 @@ public void Run(Image canvas, EntityData entity, SharedTransformSystem xformSyst
              }
  
              var colorMix = entity.Sprite.Color * layer.Color;
@@ -143,9 +143,9 @@ index 0eef467f9a..3a211dee46 100644
              coloredImage.Mutate(o => o.BackgroundColor(imageColor));
  
              var (imgX, imgY) = rsi?.Size ?? (EyeManager.PixelsPerMeter, EyeManager.PixelsPerMeter);
--            var offsetX = (int) (entity.Sprite.Offset.X * EyeManager.PixelsPerMeter);
--            var offsetY = (int) (entity.Sprite.Offset.Y * EyeManager.PixelsPerMeter);
-+            var (offsetX, offsetY) = Angle.FromDegrees(worldRotation.Degrees).RotateVec(entity.Sprite.Offset) *
+-            var offsetX = (int)(entity.Sprite.Offset.X + customOffset.X) * EyeManager.PixelsPerMeter;
+-            var offsetY = (int)(entity.Sprite.Offset.Y + customOffset.X) * EyeManager.PixelsPerMeter;
++            var (offsetX, offsetY) = (Angle.FromDegrees(worldRotation.Degrees).RotateVec(entity.Sprite.Offset) + customOffset) *
 +                                     EyeManager.PixelsPerMeter;
              image.Mutate(o => o
                  .DrawImage(coloredImage, PixelColorBlendingMode.Multiply, PixelAlphaCompositionMode.SrcAtop, 1)
@@ -153,15 +153,15 @@ index 0eef467f9a..3a211dee46 100644
                  .Flip(FlipMode.Vertical)
                  .Rotate(spriteRotation));
  
--            var pointX = (int) entity.X + offsetX - imgX / 2;
--            var pointY = (int) entity.Y + offsetY - imgY / 2;
-+            var pointX = (int) entity.X + (int)offsetX - imgX / 2;
-+            var pointY = (int) entity.Y + (int)offsetY - imgY / 2;
+-            var pointX = (int)entity.X + offsetX - imgX / 2;
+-            var pointY = (int)entity.Y + offsetY - imgY / 2;
++            var pointX = (int)entity.X + (int)offsetX - imgX / 2;
++            var pointY = (int)entity.Y + (int)offsetY - imgY / 2;
              canvas.Mutate(o => o.DrawImage(image, new Point(pointX, pointY), 1));
          }
      }
 diff --git a/Content.MapRenderer/Painters/GridPainter.cs b/Content.MapRenderer/Painters/GridPainter.cs
-index d8d6e15378..2043169c16 100644
+index ed17d0d3d6..e9e9b072fa 100644
 --- a/Content.MapRenderer/Painters/GridPainter.cs
 +++ b/Content.MapRenderer/Painters/GridPainter.cs
 @@ -13,6 +13,8 @@
@@ -177,22 +177,22 @@ index d8d6e15378..2043169c16 100644
              _decals = GetDecals();
          }
  
--        public void Run(Image gridCanvas, EntityUid gridUid, MapGridComponent grid)
-+        public void Run(Image gridCanvas, EntityUid gridUid, MapGridComponent grid, bool subfloorOnly)
+-        public void Run(Image gridCanvas, EntityUid gridUid, MapGridComponent grid, Vector2 customOffset = default)
++        public void Run(Image gridCanvas, EntityUid gridUid, MapGridComponent grid, Vector2 customOffset = default, bool subfloorOnly = false)
          {
              var stopwatch = new Stopwatch();
              stopwatch.Start();
-@@ -55,11 +57,12 @@ public void Run(Image gridCanvas, EntityUid gridUid, MapGridComponent grid)
+@@ -55,11 +57,12 @@ public void Run(Image gridCanvas, EntityUid gridUid, MapGridComponent grid, Vect
              }
  
              // Decals are always painted before entities, and are also optional.
 +            if (!subfloorOnly)
              if (_decals.TryGetValue(gridUid, out var decals))
-                 _decalPainter.Run(gridCanvas, CollectionsMarshal.AsSpan(decals));
+                 _decalPainter.Run(gridCanvas, CollectionsMarshal.AsSpan(decals), customOffset);
  
  
--            _entityPainter.Run(gridCanvas, entities);
-+            _entityPainter.Run(gridCanvas, entities, subfloorOnly);
+-            _entityPainter.Run(gridCanvas, entities, customOffset);
++            _entityPainter.Run(gridCanvas, entities, customOffset, subfloorOnly);
              Console.WriteLine($"{nameof(GridPainter)} painted grid {gridUid} in {(int) stopwatch.Elapsed.TotalMilliseconds} ms");
          }
  
@@ -207,10 +207,10 @@ index d8d6e15378..2043169c16 100644
                      components.GetOrAdd(transform.GridUid.Value, _ => new List<EntityData>()).Add(data);
                  }
 diff --git a/Content.MapRenderer/Painters/MapPainter.cs b/Content.MapRenderer/Painters/MapPainter.cs
-index 94d58b35a0..50dc692985 100644
+index e861227bcc..770b977156 100644
 --- a/Content.MapRenderer/Painters/MapPainter.cs
 +++ b/Content.MapRenderer/Painters/MapPainter.cs
-@@ -17,12 +17,13 @@
+@@ -21,12 +21,13 @@
  using SixLabors.ImageSharp;
  using SixLabors.ImageSharp.PixelFormats;
  using SixLabors.ImageSharp.Processing;
@@ -220,12 +220,12 @@ index 94d58b35a0..50dc692985 100644
  {
      public sealed class MapPainter
      {
--        public static async IAsyncEnumerable<RenderedGridImage<Rgba32>> Paint(string map)
-+        public static async IAsyncEnumerable<(RenderedGridImage<Rgba32>, RenderedGridImage<Rgba32>)> Paint(string map)
+-        public static async IAsyncEnumerable<RenderedGridImage<Rgba32>> Paint(string map,
++        public static async IAsyncEnumerable<(RenderedGridImage<Rgba32>, RenderedGridImage<Rgba32>)> Paint(string map,
+             bool mapIsFilename = false,
+             bool showMarkers = false)
          {
-             var stopwatch = new Stopwatch();
-             stopwatch.Start();
-@@ -45,6 +46,7 @@ public static async IAsyncEnumerable<RenderedGridImage<Rgba32>> Paint(string map
+@@ -51,6 +52,7 @@ public static async IAsyncEnumerable<RenderedGridImage<Rgba32>> Paint(string map
  
              var cEntityManager = client.ResolveDependency<IClientEntityManager>();
              var cPlayerManager = client.ResolveDependency<Robust.Client.Player.IPlayerManager>();
@@ -233,16 +233,16 @@ index 94d58b35a0..50dc692985 100644
  
              await client.WaitPost(() =>
              {
-@@ -117,7 +119,7 @@ await server.WaitPost(() =>
+@@ -206,7 +208,7 @@ await server.WaitPost(() =>
                  await server.WaitPost(() =>
                  {
-                     tilePainter.Run(gridCanvas, uid, grid);
--                    entityPainter.Run(gridCanvas, uid, grid);
-+                    entityPainter.Run(gridCanvas, uid, grid, false);
+                     tilePainter.Run(gridCanvas, uid, grid, customOffset);
+-                    entityPainter.Run(gridCanvas, uid, grid, customOffset);
++                    entityPainter.Run(gridCanvas, uid, grid, customOffset, false);
  
                      gridCanvas.Mutate(e => e.Flip(FlipMode.Vertical));
                  });
-@@ -128,7 +130,35 @@ await server.WaitPost(() =>
+@@ -217,7 +219,35 @@ await server.WaitPost(() =>
                      Offset = xformSystem.GetWorldPosition(uid),
                  };
  
@@ -280,7 +280,7 @@ index 94d58b35a0..50dc692985 100644
  
              // We don't care if it fails as we have already saved the images.
 diff --git a/Content.MapRenderer/Program.cs b/Content.MapRenderer/Program.cs
-index 7314119108..bf8988cc12 100644
+index 115d83e65e..742229f19c 100644
 --- a/Content.MapRenderer/Program.cs
 +++ b/Content.MapRenderer/Program.cs
 @@ -9,6 +9,7 @@
@@ -291,12 +291,14 @@ index 7314119108..bf8988cc12 100644
  using Robust.Shared.Prototypes;
  using SixLabors.ImageSharp;
  using SixLabors.ImageSharp.Formats.Webp;
-@@ -160,13 +161,15 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -134,15 +135,17 @@ private static async Task Run(CommandLineArguments arguments)
                  var i = 0;
                  try
                  {
--                    await foreach (var renderedGrid in MapPainter.Paint(map))
-+                    await foreach (var (renderedGrid, renderedSubfloor) in MapPainter.Paint(map))
+-                    await foreach (var renderedGrid in MapPainter.Paint(map,
++                    await foreach (var (renderedGrid, renderedSubfloor) in MapPainter.Paint(map,
+                                        arguments.ArgumentsAreFileNames,
+                                        arguments.ShowMarkers))
                      {
                          var grid = renderedGrid.Image;
 +                        var subfloor = renderedSubfloor.Image;
@@ -308,7 +310,7 @@ index 7314119108..bf8988cc12 100644
  
                          Console.WriteLine($"Writing grid of size {grid.Width}x{grid.Height} to {savePath}");
  
-@@ -181,17 +184,23 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -157,17 +160,23 @@ private static async Task Run(CommandLineArguments arguments)
                                  };
  
                                  await grid.SaveAsync(savePath, encoder);
@@ -333,7 +335,7 @@ index 7314119108..bf8988cc12 100644
  
                          mapNames.Add(fileName);
                          i++;
-@@ -206,7 +215,11 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -182,7 +191,11 @@ private static async Task Run(CommandLineArguments arguments)
  
                  if (arguments.ExportViewerJson)
                  {
