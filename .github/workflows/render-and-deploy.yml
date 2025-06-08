@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAP_IMAGES_CACHE_BUST_VERSION: v2
-  MAP_RENDERER_CACHE_BUST_VERSION: v1
+  MAP_IMAGES_CACHE_BUST_VERSION: v4
+  MAP_RENDERER_CACHE_BUST_VERSION: v2
   SS14_REPO: space-sunrise/sunrise-station
   SS14_MAP_POOL: Resources/Prototypes/_Sunrise/Maps/Pools/default.yml
 
