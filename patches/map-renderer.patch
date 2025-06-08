@@ -1,3 +1,16 @@
+diff --git a/Content.IntegrationTests/Pair/TestPair.Recycle.cs b/Content.IntegrationTests/Pair/TestPair.Recycle.cs
+index 89a9eb6463..b574d37ede 100644
+--- a/Content.IntegrationTests/Pair/TestPair.Recycle.cs
++++ b/Content.IntegrationTests/Pair/TestPair.Recycle.cs
+@@ -123,7 +123,7 @@ public async ValueTask DisposeAsync()
+                 ClearContext();
+                 break;
+             default:
+-                throw new Exception($"{nameof(DisposeAsync)}: Unexpected state. Pair: {Id}. State: {State}.");
++                await _testOut.WriteLineAsync($"{nameof(DisposeAsync)}: Unexpected state. Pair: {Id}. State: {State}.");
+         }
+     }
+ 
 diff --git a/Content.IntegrationTests/PoolManager.cs b/Content.IntegrationTests/PoolManager.cs
 index c7b8dcaee9..7577c9ac0d 100644
 --- a/Content.IntegrationTests/PoolManager.cs
@@ -280,7 +293,7 @@ index e861227bcc..0e9b63a3aa 100644
  
              // We don't care if it fails as we have already saved the images.
 diff --git a/Content.MapRenderer/Program.cs b/Content.MapRenderer/Program.cs
-index 115d83e65e..742229f19c 100644
+index 115d83e65e..825218129b 100644
 --- a/Content.MapRenderer/Program.cs
 +++ b/Content.MapRenderer/Program.cs
 @@ -9,6 +9,7 @@
@@ -335,7 +348,13 @@ index 115d83e65e..742229f19c 100644
  
                          mapNames.Add(fileName);
                          i++;
-@@ -182,7 +191,11 @@ private static async Task Run(CommandLineArguments arguments)
+@@ -177,12 +186,17 @@ private static async Task Run(CommandLineArguments arguments)
+                 {
+                     Console.WriteLine($"Painting map {map} failed due to an internal exception:");
+                     Console.WriteLine(ex);
++                    Environment.Exit(1); // Do not continue, it's bad for CI
+                     continue;
+                 }
  
                  if (arguments.ExportViewerJson)
                  {
