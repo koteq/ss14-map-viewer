@@ -1,13 +1,14 @@
 diff --git a/Content.IntegrationTests/Pair/TestPair.Recycle.cs b/Content.IntegrationTests/Pair/TestPair.Recycle.cs
-index 89a9eb6463..b574d37ede 100644
+index 89a9eb6463..accd9667d0 100644
 --- a/Content.IntegrationTests/Pair/TestPair.Recycle.cs
 +++ b/Content.IntegrationTests/Pair/TestPair.Recycle.cs
-@@ -123,7 +123,7 @@ public async ValueTask DisposeAsync()
+@@ -123,7 +123,8 @@ public async ValueTask DisposeAsync()
                  ClearContext();
                  break;
              default:
 -                throw new Exception($"{nameof(DisposeAsync)}: Unexpected state. Pair: {Id}. State: {State}.");
 +                await _testOut.WriteLineAsync($"{nameof(DisposeAsync)}: Unexpected state. Pair: {Id}. State: {State}.");
++                break;
          }
      }
  
